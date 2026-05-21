@@ -76,35 +76,31 @@ public class AuthService {
     @Transactional
     public AuthResponse refreshToken(TokenRefreshRequest request) {
         // 1. Find the old refresh token
-        RefreshToken oldRefreshToken = refreshTokenRepository.findByToken(request.getRefreshToken())
+        RefreshToken existingToken = refreshTokenRepository.findByToken(request.getRefreshToken())
                 .orElseThrow(() -> new TokenRefreshException("Refresh token not found"));
 
         // 2. Check if it's expired
-        if (oldRefreshToken.getExpiryDate().compareTo(Instant.now()) < 0) {
-            refreshTokenRepository.delete(oldRefreshToken);
+        if (existingToken.getExpiryDate().compareTo(Instant.now()) < 0) {
+            refreshTokenRepository.delete(existingToken);
             throw new TokenRefreshException("Refresh token was expired. Please make a new signin request");
         }
 
-        User user = oldRefreshToken.getUser();
+        User user = existingToken.getUser();
 
-        // --- THE ROTATION LOGIC ---
+        // --- THE ROTATION LOGIC (UPDATED) ---
         
-        // 3. Delete the old refresh token so a hacker can never reuse it (The Tripwire!)
-        refreshTokenRepository.delete(oldRefreshToken);
-
-        // 4. Generate a brand new refresh token for the real user
-        RefreshToken newRefreshToken = new RefreshToken();
-        newRefreshToken.setUser(user);
-        newRefreshToken.setToken(java.util.UUID.randomUUID().toString());
-        newRefreshToken.setExpiryDate(Instant.now().plusMillis(1000L * 60 * 60 * 24 * 7)); // Resets the 7-day clock
+        // 3. Instead of deleting and recreating, we simply UPDATE the existing database row.
+        // This prevents the SQL "Duplicate entry" constraint crash!
+        existingToken.setToken(java.util.UUID.randomUUID().toString());
+        existingToken.setExpiryDate(Instant.now().plusMillis(1000L * 60 * 60 * 24 * 7)); // Resets the 7-day clock
         
-        refreshTokenRepository.save(newRefreshToken);
+        refreshTokenRepository.save(existingToken);
 
-        // 5. Generate the new 15-minute Access Token
+        // 4. Generate the new 15-minute Access Token
         String newAccessToken = jwtUtil.generateToken(user.getEmail());
 
-        // 6. Send BOTH new tokens back to Angular
-        return new AuthResponse(newAccessToken, newRefreshToken.getToken());
+        // 5. Send BOTH new tokens back to Angular
+        return new AuthResponse(newAccessToken, existingToken.getToken());
     }
     
     @Transactional
