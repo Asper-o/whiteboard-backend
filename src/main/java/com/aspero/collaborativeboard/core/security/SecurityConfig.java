@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -23,6 +24,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter; // <-- Inject our new Bouncer
+    
+    @Value("${cors.allowed-origin}")
+    private String allowedOrigin;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -53,7 +57,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         
         // Explicitly allow your Angular app
-        configuration.setAllowedOrigins(List.of("http://localhost:4200"));
+        configuration.setAllowedOrigins(List.of(allowedOrigin));
         
         // Allow the browser to send these specific HTTP methods (Crucial for the OPTIONS preflight)
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
