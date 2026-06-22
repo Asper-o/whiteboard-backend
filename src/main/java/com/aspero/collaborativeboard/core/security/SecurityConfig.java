@@ -20,10 +20,10 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
-@RequiredArgsConstructor // <-- Add this to inject the filter
+@RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthFilter jwtAuthFilter; // <-- Inject our new Bouncer
+    private final JwtAuthFilter jwtAuthFilter;
     
     @Value("${cors.allowed-origin}")
     private String allowedOrigin;
@@ -39,37 +39,26 @@ public class SecurityConfig {
         		.cors(cors -> cors.configurationSource(corsConfigurationSource()))
         		
             .csrf(csrf -> csrf.disable())
-            // Tell Spring we are stateless (No RAM sessions, only JWTs)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll() 
                 .anyRequest().authenticated() 
             )
-            // Put our Bouncer BEFORE the standard Spring Security password filter
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         
         return http.build();
     }
     
-    // Add this inside your SecurityConfig class
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         
-        // Explicitly allow your Angular app
         configuration.setAllowedOrigins(List.of(allowedOrigin));
-        
-        // Allow the browser to send these specific HTTP methods (Crucial for the OPTIONS preflight)
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        
-        // Allow all headers (like Authorization for your JWT)
         configuration.setAllowedHeaders(List.of("*"));
-        
-        // Allow credentials (important if we upgrade to HttpOnly cookies later)
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        // Apply this rule to every single endpoint in your app
         source.registerCorsConfiguration("/**", configuration);
         
         return source;

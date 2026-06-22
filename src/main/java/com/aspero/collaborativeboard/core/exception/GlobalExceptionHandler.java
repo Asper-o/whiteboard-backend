@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
-@RestControllerAdvice // This tells Spring: "Listen to all controllers for errors"
+@RestControllerAdvice
 public class GlobalExceptionHandler {
 
     // 1. Handle our custom "User Already Exists" error (HTTP 409 Conflict)
@@ -32,7 +32,6 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleValidationErrors(MethodArgumentNotValidException ex) {
         Map<String, String> validationErrors = new HashMap<>();
         
-        // Loop through all the fields that failed and get our custom messages
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
             validationErrors.put(fieldError.getField(), fieldError.getDefaultMessage());
         }
@@ -41,7 +40,7 @@ public class GlobalExceptionHandler {
         errorResponse.put("timestamp", LocalDateTime.now());
         errorResponse.put("status", HttpStatus.BAD_REQUEST.value());
         errorResponse.put("error", "Validation Failed");
-        errorResponse.put("messages", validationErrors); // Returns {"email": "invalid format", "password": "too short"}
+        errorResponse.put("messages", validationErrors); 
 
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
@@ -65,7 +64,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleInvalidCredentials(InvalidCredentialsException ex) {
         Map<String, Object> errorResponse = new HashMap<>();
         errorResponse.put("timestamp", LocalDateTime.now());
-        errorResponse.put("status", HttpStatus.UNAUTHORIZED.value()); // Returns 401
+        errorResponse.put("status", HttpStatus.UNAUTHORIZED.value()); 
         errorResponse.put("error", "Unauthorized");
         errorResponse.put("message", ex.getMessage());
         
@@ -97,7 +96,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
-    // 6. Handle Security "Access Denied" (We will need this for Phase 4 RBAC!)
+    // 6. Handle Security "Access Denied" 
     @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
     public ResponseEntity<Map<String, Object>> handleAccessDenied(org.springframework.security.access.AccessDeniedException ex) {
         Map<String, Object> errorResponse = new HashMap<>();

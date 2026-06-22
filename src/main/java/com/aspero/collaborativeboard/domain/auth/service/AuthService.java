@@ -42,7 +42,6 @@ public class AuthService {
 
         User user = new User();
         user.setEmail(request.getEmail());
-        // Hashing the password before saving!
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         
         userRepository.save(user);
@@ -60,12 +59,11 @@ public class AuthService {
 
         String jwt = jwtUtil.generateToken(user.getEmail());
         
-        //Find existing token OR create a new one if it doesn't exist
         RefreshToken refreshToken = refreshTokenRepository.findByUser(user)
                 .orElse(new RefreshToken());
         
         refreshToken.setUser(user);
-        refreshToken.setToken(java.util.UUID.randomUUID().toString()); // Secure random string
+        refreshToken.setToken(java.util.UUID.randomUUID().toString()); 
         refreshToken.setExpiryDate(Instant.now().plusMillis(1000 * 60 * 60 * 24 * 7)); // 7 days
         
         refreshTokenRepository.save(refreshToken);
@@ -75,31 +73,22 @@ public class AuthService {
     
     @Transactional
     public AuthResponse refreshToken(TokenRefreshRequest request) {
-        // 1. Find the old refresh token
         RefreshToken existingToken = refreshTokenRepository.findByToken(request.getRefreshToken())
                 .orElseThrow(() -> new TokenRefreshException("Refresh token not found"));
 
-        // 2. Check if it's expired
         if (existingToken.getExpiryDate().compareTo(Instant.now()) < 0) {
             refreshTokenRepository.delete(existingToken);
             throw new TokenRefreshException("Refresh token was expired. Please make a new signin request");
         }
 
         User user = existingToken.getUser();
-
-        // --- THE ROTATION LOGIC (UPDATED) ---
-        
-        // 3. Instead of deleting and recreating, we simply UPDATE the existing database row.
-        // This prevents the SQL "Duplicate entry" constraint crash!
+      
         existingToken.setToken(java.util.UUID.randomUUID().toString());
         existingToken.setExpiryDate(Instant.now().plusMillis(1000L * 60 * 60 * 24 * 7)); // Resets the 7-day clock
         
         refreshTokenRepository.save(existingToken);
-
-        // 4. Generate the new 15-minute Access Token
         String newAccessToken = jwtUtil.generateToken(user.getEmail());
 
-        // 5. Send BOTH new tokens back to Angular
         return new AuthResponse(newAccessToken, existingToken.getToken());
     }
     
@@ -108,12 +97,10 @@ public class AuthService {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String jwt = authHeader.substring(7);
             
-            // 1. Blacklist the JWT so it can't be used again
             BlacklistedToken blacklistedToken = new BlacklistedToken();
             blacklistedToken.setToken(jwt);
             blacklistedTokenRepository.save(blacklistedToken);
 
-            // 2. Delete the user's Refresh Token from the DB
             String email = jwtUtil.extractEmail(jwt);
             userRepository.findByEmail(email).ifPresent(refreshTokenRepository::deleteByUser);
         }

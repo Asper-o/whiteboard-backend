@@ -49,7 +49,7 @@ public class CanvasService {
         Canvas canvas = new Canvas();
         canvas.setName(dto.getName());
         canvas.setData(dto.getData());
-        canvas.setUser(currentUser); // Link it to the user!
+        canvas.setUser(currentUser); 
         
         Canvas savedCanvas = canvasRepository.save(canvas);
         return mapToDTO(savedCanvas);
@@ -62,7 +62,6 @@ public class CanvasService {
         Canvas canvas = canvasRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Canvas not found"));
 
-        // Security check: Make sure the user isn't trying to edit someone else's canvas!
         if (!canvas.getUser().getId().equals(currentUser.getId())) {
             throw new RuntimeException("Unauthorized to edit this canvas");
         }
